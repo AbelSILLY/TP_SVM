@@ -1,0 +1,476 @@
+---
+title: "TP3 N°3 : Support Vector Machine"
+author: "Abel SILLY"
+format:
+  pdf:
+    toc: true
+    number-sections: true
+    colorlinks: true
+header-includes:
+  \usepackage{hyperref}
+  \usepackage{graphicx}
+---
+
+\newpage
+\section{Jeu de données Iris}
+
+Le but de cette section est de faire une première étude de classification sur le jeu de données iris, on se restreint à la classification entre les espèces *Versicolor* et *Virginica*. On comparera dans cette section les performances entre un noyau linéaire et un noyau polynomial.
+
+\subsection{Question 1 : Noyau Linéaire}
+
+
+
+```{python}
+#| echo: false
+import sys
+sys.path.append('../code')
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.svm import SVC
+
+from svm_source import *
+from sklearn import svm
+from sklearn import datasets
+from sklearn.utils import shuffle
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.datasets import fetch_lfw_people
+from sklearn.decomposition import PCA
+from time import time
+
+scaler = StandardScaler()
+
+import warnings
+warnings.filterwarnings("ignore")
+
+plt.style.use('ggplot')
+```
+
+On commence par effectuer une classification des iris en utilisant les deux premières variables et un noyau linéaire.
+
+```{python}
+#| echo: false
+np.random.seed(123)
+iris = datasets.load_iris()
+X = iris.data
+X = scaler.fit_transform(X)
+y = iris.target
+X = X[y != 0, :2]
+y = y[y != 0]
+
+# split train test
+X, y = shuffle(X, y)
+X_train, X_test, y_train, y_test = train_test_split(X,y)
+```
+
+```{python}
+#| echo: false
+clf_linear = SVC(kernel='linear')
+clf_linear.fit(X_train,y_train)
+
+score = clf_linear.score(X_test,y_test)
+print('Score : %s' % score)
+
+print('Generalization score for linear kernel: %s, %s' %
+      (clf_linear.score(X_train, y_train),
+       clf_linear.score(X_test, y_test)))
+```
+
+On obtient alors la partition suivante :
+
+```{python}
+#| echo: false
+#| fig-cap: "Représentation de la classification avec un noyau linéaire"
+
+
+def f_linear(xx):
+    """Classifier: needed to avoid warning due to shape issues"""
+    return clf_linear.predict(xx.reshape(1, -1))
+
+def f_poly(xx):
+    """Classifier: needed to avoid warning due to shape issues"""
+    return clf_poly.predict(xx.reshape(1, -1))
+
+plt.ion()
+plt.figure(figsize=(15, 5))
+plt.subplot(131)
+plot_2d(X, y)
+plt.title("iris dataset")
+
+plt.subplot(132)
+frontiere(f_linear, X, y)
+plt.title("linear kernel")
+
+```
+
+
+
+\subsection{Question 2 : Noyau Polynomial}
+
+On s'intéresse maintenant à la même classification mais avec un noyau polynomial.
+
+```{python}
+#| echo: false
+clf_poly = SVC(kernel='poly')
+clf_poly.fit(X_train,y_train)
+print('Generalization score for polynomial kernel: %s, %s' %
+      (clf_poly.score(X_train, y_train),
+       clf_poly.score(X_test, y_test)))
+```
+
+On observe que sur cet exemple, le noyau linéaire obtient un meilleur score que le noyau polynomial (bien que le noyau polynomial soit plus sofistiqué). A noter que dans ces réalisations nous avons utilisé la valeur par défaut pour l'argument $C$, c'est-à-dire $C$ = $1.0$.
+
+```{python}
+#| echo: false
+#| fig-cap: "Représentation de la classification avec un noyau polynomial"
+
+
+plt.ion()
+plt.figure(figsize=(15, 5))
+plt.subplot(131)
+plot_2d(X, y)
+plt.title("iris dataset")
+
+plt.subplot(132)
+frontiere(f_poly, X, y)
+
+plt.title("polynomial kernel")
+plt.tight_layout()
+plt.draw()
+```
+
+On voit bien sur ce graphique qu'un ensemble plus important de points oranges sont mal classifiés.
+
+
+On peut également chercher quels paramètres donneront le meilleur score pour un noyau polynomial et linéaire.
+
+```{python}
+#| echo: false
+# liste de paramètres
+parameters = {'kernel': ['linear'], 'C': list(np.linspace(-2, 2, 200))}
+clf_l = SVC()
+clf_grid = GridSearchCV(clf_l, parameters, n_jobs=-1)
+clf_grid.fit(X_train,y_train)
+
+# score obtenu avec les meilleurs paramètres
+print(clf_grid.best_params_)
+print('Score : %s' % clf_grid.score(X_test, y_test))
+```
+
+```{python}
+#| echo: false
+Cs = list(np.linspace(-2, 2, 200))
+gammas = 10. ** np.arange(1, 2)
+degrees = np.r_[1, 2, 3]
+parameters = {'kernel': ['poly'], 'C': Cs, 'gamma': gammas, 'degree': degrees}
+
+clf_p = SVC(kernel='poly')
+clf_poly_grid = GridSearchCV(clf_p, parameters,n_jobs=-1)
+clf_poly_grid.fit(X_train,y_train)
+
+print(clf_poly_grid.best_params_)
+print('Score : %s' % clf_poly_grid.score(X_test, y_test))
+
+```
+
+On observe sur cet exemple que les deux grilles de recherche rendent un score similaire. Le degré optimal du polynome semble être $1$, ce qui revient à dire que le noyau est linéaire.
+
+\section{SVM GUI}
+On souhaite maintenant étudier le comportement d'un classifieur linéaire dans un jeu de données déséquilibré en fonction du paramètre $C$. On affichera la classification pour des valeurs de $C$ égales à $5$, $1$,$0.1$ et $0.01$.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=10cm,height=10cm]{C1.png}
+    \caption{Noyau linéaire et C=1}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=10cm,height=10cm]{C01.png}
+    \caption{Noyau linéaire et C=0.1}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=10cm,height=10cm]{C001.png}
+    \caption{Noyau linéaire et C=0.01}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=10cm,height=10cm]{C0001.png}
+    \caption{Noyau linéaire et C=0.001}
+    \label{Fig}
+\end{figure}
+
+On observe que plus $C$ diminue, moins le classifieur tient compte du groupe de points noir (le classifieur s'écarte petit à petit vers le haut) jusqu'à arriver au cas extrême $C = 0,001$ (cf \ref{Fig}) où tous les points noirs sont mal classifiés. On aimerait donc donner un poids plus important aux erreurs sur la classe de points minoritaires.
+\section{Classification de visages}
+
+Le but de cette partie va être d'effectuer de la classification de visages avec les méthodes SVM sur deux personnes, Tony Blair et Colin Powell.
+Voici un exemple d'images de Tony Blair issues de notre jeu de données.
+
+```{python}
+#| echo: false
+#| fig-cap: "Exemple d'image de Tony Blair issues de la base de données"
+####################################################################
+# Download the data and unzip; then load it as numpy arrays
+from sklearn.datasets import fetch_lfw_people
+
+lfw_people = fetch_lfw_people(min_faces_per_person=70, resize=0.4,
+                              color=True, funneled=False, slice_=None,
+                              download_if_missing=True)
+
+images = lfw_people.images
+n_samples, h, w, n_colors = images.shape
+
+# the label to predict is the id of the person
+target_names = lfw_people.target_names.tolist()
+
+####################################################################
+# Pick a pair to classify such as
+names = ['Tony Blair', 'Colin Powell']
+
+idx0 = (lfw_people.target == target_names.index(names[0]))
+idx1 = (lfw_people.target == target_names.index(names[1]))
+images = np.r_[images[idx0], images[idx1]]
+n_samples = images.shape[0]
+# y = np.r_[np.zeros(np.sum(idx0)), np.ones(np.sum(idx1))].astype(np.int)
+y = np.r_[np.zeros(np.sum(idx0)), np.ones(np.sum(idx1))].astype(int)
+
+
+# plot a sample set of the data
+plot_gallery(images, np.arange(12))
+plt.show()
+```
+
+Nos prédictions se baseront seulement sur l'illumination (éclairage) des photos.
+
+```{python}
+#| echo: false
+####################################################################
+# Extract features
+
+# features using only illuminations
+X = (np.mean(images, axis=3)).reshape(n_samples, -1)
+
+# # or compute features using colors (3 times more features)
+# X = images.copy().reshape(n_samples, -1)
+
+# Scale features
+X -= np.mean(X, axis=0)
+X /= np.std(X, axis=0)
+
+indices = np.random.permutation(X.shape[0])
+train_idx, test_idx = indices[:X.shape[0] // 2], indices[X.shape[0] // 2:]
+X_train, X_test = X[train_idx, :], X[test_idx, :]
+y_train, y_test = y[train_idx], y[test_idx]
+images_train, images_test = images[
+    train_idx, :, :, :], images[test_idx, :, :, :]
+```
+
+\subsection{Question 4 : Influence du paramètre de régularisation}
+
+On s'intéresse à l'importance du paramètre de régularisation $C$, pour cela nous allons représenter l'évolution du score du modèle (à noyau linéaire) en fonction de $C$ où $C$ sera entre $10^{-5}$ et $10^5$ sur une échelle logarithmique.
+
+```{python}
+#| echo: false
+#| fig-cap: "Score obtenu en fonction du paramètre C sur une échelle logarithmique entre $10^{-5}$ et $10^5$"
+print("--- Linear kernel ---")
+print("Fitting the classifier to the training set")
+t0 = time()
+
+# fit a classifier (linear) and test all the Cs
+#Cs = 10. ** np.arange(-5, 6)
+Cs = np.logspace(-5,5,num  = 50)
+scores = []
+for C in Cs:
+    clf = SVC(kernel='linear',C = C)
+    clf.fit(X_train,y_train)
+    scores.append(clf.score(X_test,y_test))
+
+ind = np.argmax(scores)
+print("Best C: {}".format(Cs[ind]))
+
+plt.figure()
+plt.plot(Cs, scores)
+plt.xlabel("Parametres de regularisation C")
+plt.ylabel("Scores d'apprentissage")
+plt.xscale("log")
+plt.tight_layout()
+plt.show()
+print("Best score: {}".format(np.max(scores)))
+print("done in %0.3fs" % (time() - t0))
+```
+
+Sur cet exemple on obtient que le meilleur score est d'à peu près $95\%$ et est atteint pour $C \simeq 0.000268$.
+
+On peut maintenant faire une prédiction sur les noms en utilisant le meilleur $C$, précédement trouvé.
+```{python}
+#| echo: false
+
+print("Predicting the people names on the testing set")
+t0 = time()
+clf = SVC(kernel='linear',C = Cs[ind])
+clf.fit(X_train,y_train)
+y_pred = clf.predict(X_test)
+
+#print("done in %0.3fs" % (time() - t0))
+# The chance level is the accuracy that will be reached when constantly predicting the majority class.
+print("Chance level : %s" % max(np.mean(y), 1. - np.mean(y)))
+print("Accuracy : %s" % clf.score(X_test, y_test))
+```
+
+On retrouve bien le même score que précédement et on peut le comparer au "niveau de chance" qui représente le score que l'on obtient en prédisant constamment la classe majoritaire. Ce niveau est ici d'à peu près $62\%$, on gagne donc plus de $30\%$ de précision avec notre méthode.
+
+On peut représenter un exemple d'images et les prédictions associées (Figure 8).
+
+```{python}
+#| echo: false
+#| fig-cap: "Exemple d'images et de prédictions associées"
+
+prediction_titles = [title(y_pred[i], y_test[i], names)
+                     for i in range(y_pred.shape[0])]
+
+plot_gallery(images_test, prediction_titles)
+plt.show()
+
+```
+
+On peut également regarder les coefficients qui importent le plus dans la prédiction, ce qui correspond sur l'image aux zones les plus lumineuses (Figure 9).
+
+```{python}
+#| echo: false
+#| fig-cap: "Coefficients les plus informatifs pour la prédiction"
+plt.figure()
+plt.imshow(np.reshape(clf.coef_, (h, w)))
+plt.show()
+```
+
+
+\subsection{Question 5 : Réduction de performance avec des variables de bruits}
+
+On souhaite maintenant observer un effet de sur-paramétrisation en ajoutant des variables de bruit pour la prédiction.
+
+On commence par observer le score obtenu sans variable de bruit.
+
+```{python}
+#| echo: false
+def run_svm_cv(_X, _y):
+    _indices = np.random.permutation(_X.shape[0])
+    _train_idx, _test_idx = _indices[:_X.shape[0] // 2], _indices[_X.shape[0] // 2:]
+    _X_train, _X_test = _X[_train_idx, :], _X[_test_idx, :]
+    _y_train, _y_test = _y[_train_idx], _y[_test_idx]
+
+    _parameters = {'kernel': ['linear'], 'C': list(np.logspace(-3, 3, 5))}
+    _svr = svm.SVC()
+    _clf_linear = GridSearchCV(_svr, _parameters,n_jobs=5)
+    _clf_linear.fit(_X_train, _y_train)
+
+    print('Generalization score for linear kernel: %s, %s \n' %
+          (_clf_linear.score(_X_train, _y_train), _clf_linear.score(_X_test, _y_test)))
+
+print("Score sans variable de nuisance")
+run_svm_cv(X,y)
+```
+
+On obtient ici un score de précision de $\approx 92\%$ que nous comparerons avec le score sur les données bruitées.
+
+Nous allons pour commencer rajouter $300$ variables gaussiennes centrées réduites.
+
+```{python}
+#| echo: false
+#np.random.seed(123)
+print("Score avec variable de nuisance")
+n_features = X.shape[1]
+# On rajoute des variables de nuisances
+sigma = 1
+noise = sigma * np.random.randn(n_samples, 300, )
+X_noisy = np.concatenate((X, noise), axis=1)
+#X_noisy = X_noisy[:,np.random.permutation(X_noisy.shape[1])] ?
+run_svm_cv(X_noisy,y)
+```
+
+Le score obtenu est ici de $90\%$, ce qui n'est pas si loin du score précédent.
+
+Nous allons donc générer plus de variables gaussiennes avec une variance plus élevée afin de faire baisser le score de façon plus importante.
+
+```{python}
+#| echo: false
+#np.random.seed(123)
+sigma = 3
+noise = sigma * np.random.randn(n_samples, 5000, )
+X_noisy = np.concatenate((X, noise), axis=1)
+run_svm_cv(X_noisy,y)
+```
+
+On a rajouté ici $5000$ variables gaussienne de variance $9$, ce qui signifie qu'un tier des variables correspondent à du bruit. On obtient bien cette fois un score de $79\%$ ce qui est bien inférieur au premier score. Avec un tier de variables de bruit supplémentaire on perd à peu près $10\%$ de score.
+
+\subsection{Question 6 : Réduction de dimension}
+
+On veut maintenant améliorer notre prédiction à l'aide d'une réduction de dimension. Nous allons effectuer une Analyse en Composantes Principales (ACP) sur nos données précemment bruitées, en espérant ainsi éliminer les dimensions de bruit et conserver suffisemment d'information utile pour la prédiction.
+
+Par faciliter l'analyse des résultats on se permet de changer la graine, nous comparerons donc les différents score à une valeur différente des $79\%$ précédement trouvés.
+
+Nous commencerons par une réduction sur $380$ et $200$ composantes.
+
+```{python}
+#| echo: false
+np.random.seed(123)
+# scale before PCA
+
+scaler.fit(X_noisy)
+X_ncr = scaler.transform(X_noisy)
+
+n_components = 380  # jouer avec ce parametre
+pca = PCA(n_components=n_components,svd_solver='randomized').fit(X_ncr)
+
+X_redu = pca.transform(X_ncr)
+
+print("Score avant réduction :")
+run_svm_cv(X_noisy,y)
+
+print("Score après réduction sur 380 composantes :")
+run_svm_cv(X_redu,y)
+
+pca = PCA(n_components=200,svd_solver='randomized').fit(X_ncr)
+X_redu = pca.transform(X_ncr)
+
+print("Score après réduction sur 200 composantes :")
+run_svm_cv(X_redu,y)
+
+```
+
+Le score avant réduction est de $83\%$.
+
+On observe donc que le score augmente légèrement après réduction. On gagne un peu plus de $5\%$ de précision avec la réduction sur $380$ composantes et un peu plus de $3\%$ avec la réduction sur $200$ composantes.
+
+On peut maintenant essayer d'effectuer la réduction sur un autre nombre de composantes.
+
+```{python}
+#| echo: false
+#np.random.seed(123)
+n_components = 100  # jouer avec ce parametre
+pca = PCA(n_components=n_components,svd_solver='randomized').fit(X_ncr)
+X_redu = pca.transform(X_ncr)
+
+
+print("Score après réduction sur 100 composantes")
+run_svm_cv(X_redu,y)
+
+pca = PCA(n_components=n_components,svd_solver='randomized').fit(X_ncr)
+X_redu = pca.transform(X_ncr)
+
+print("Score après réduction sur 50 composantes")
+run_svm_cv(X_redu,y)
+
+```
+
+La réduction sur $100$ composantes semble augmenter le score d'une façon assez importante, on gagne en effet $8\%$ de précision sur cette réduction.
+
+Cependant on observe que la réduction sur $50$ composantes donne un score similaire à celui de la réduction sur $380$ composantes.
+
+Cependant, en éxecutant un certains nombre de fois le code précédent, on observe que les score ont tendance à varier de façon non négligeable. On ne semble donc pas trouver de nombre de dimension significativement meilleur.
+
+On observe tout de même que la réduction donne toujours l'effet attendu, c'est à dire une augmentation du score après réduction.
+
+On arrive donc bien à se séparer du bruit et à garder des dimensions importantes pour la prédiction.
