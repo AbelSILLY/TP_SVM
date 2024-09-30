@@ -179,6 +179,25 @@ plt.draw()
 # Then, play with the applet : generate various datasets and observe the
 # different classifiers you can obtain by varying the kernel
 
+# générer un jeu de donnéé très déséquilibré.
+def f2(xx):
+    """Classifier: needed to avoid warning due to shape issues"""
+    return clf_linear.predict(xx.reshape(1, -1))
+
+
+X, y = rand_bi_gauss(90, 10, mu1, mu2, sigma1, sigma2)
+X_train, X_test, y_train, y_test = train_test_split(X,y)
+#for C in Cs:
+#    clf_linear = SVC(kernel='linear')
+#    clf_linear.fit(X_train,y_train)
+#    plt.figure()
+#    frontiere(f2, X_train, Y_train, w=None, step=50, alpha_choice=1)
+#    plt.show()
+
+    
+
+
+
 
 #%%
 ###############################################################################
@@ -294,7 +313,6 @@ t0 = time()
 clf = SVC(kernel='linear',C = Cs[ind])
 clf.fit(X_train,y_train)
 y_pred = clf.predict(X_test)
-# ... TODO
 
 print("done in %0.3fs" % (time() - t0))
 # The chance level is the accuracy that will be reached when constantly predicting the majority class.
@@ -337,44 +355,52 @@ def run_svm_cv(_X, _y):
 
 print("Score sans variable de nuisance")
 run_svm_cv(X,y)
-# TODO ... use run_svm_cv on data
 
 print("Score avec variable de nuisance")
 n_features = X.shape[1]
 # On rajoute des variables de nuisances
-sigma = 1
-noise = sigma * np.random.randn(n_samples, 300, )
+sigma = 3
+noise = sigma * np.random.randn(n_samples, 5000, )
+#X_noisy = X + noise
 X_noisy = np.concatenate((X, noise), axis=1)
-X_noisy = X_noisy[np.random.permutation(X.shape[0])]
+#X_noisy = X_noisy[np.random.permutation(X.shape[0])]
+#X_noisy = X_noisy[:,np.random.permutation(X_noisy.shape[1])] ?
 run_svm_cv(X_noisy,y)
-# TODO ... use run_svm_cv on noisy data
 
 #%%
 # Q6
-print("Score apres reduction de dimension")
+# scale before PCA
 
-n_components = 40  # jouer avec ce parametre
-pca = PCA(n_components=n_components,svd_solver='randomized').fit(X_noisy)
-X_transfo = pca.fit_transform(X_train,y_train)
-X_test_transfo = pca.fit_transform(X_test,y_test)
-clf3 = SVC(kernel='linear',C= Cs[ind])
-clf3.fit(X_transfo,y_train)
-print(clf3.score(X_test_transfo,y_test))
+scaler.fit(X_noisy)
+X_ncr = scaler.transform(X_noisy)
 
-#%%
-scores_redu = []
-for n in range(n_components):
-    pca = PCA(n_components=n+1,svd_solver='randomized')
-    X_train_transfo = pca.fit_transform(X_train)
-    X_test_transfo = pca.fit_transform(X_test)
-    clf3 = SVC(kernel='linear') #ajouter C = Cs[ind] ?
-    clf3.fit(X_train_transfo,y_train)
-    scores_redu.append(clf3.score(X_test_transfo,y_test))
+n_components = 380  # jouer avec ce parametre
+pca = PCA(n_components=n_components,svd_solver='randomized').fit(X_ncr)
+
+X_redu = pca.transform(X_ncr)
+
+print("Score avant réduction :")
+run_svm_cv(X_noisy,y)
+
+print("Score après réduction sur 380 composantes :")
+run_svm_cv(X_redu,y)
+
+pca = PCA(n_components=200,svd_solver='randomized').fit(X_ncr)
+X_redu = pca.transform(X_ncr)
+
+print("Score après réduction sur 200 composantes :")
+run_svm_cv(X_redu,y)
+
+n_components = 100  # jouer avec ce parametre
+pca = PCA(n_components=n_components,svd_solver='randomized').fit(X_ncr)
+X_redu = pca.transform(X_ncr)
 
 
-plt.figure()
-plt.plot(np.arange(n_components)+1,scores_redu)
-plt.show()
-# ... TODO
+print("Score après réduction sur 100 composantes")
+run_svm_cv(X_redu,y)
 
-# %%
+pca = PCA(n_components=n_components,svd_solver='randomized').fit(X_ncr)
+X_redu = pca.transform(X_ncr)
+
+print("Score après réduction sur 50 composantes")
+run_svm_cv(X_redu,y)
