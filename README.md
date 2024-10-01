@@ -1,7 +1,22 @@
 # TP N°3 : Support Vector Machine
 ## SILLY Abel
 
+Vous pouvez cloner le dépot en éxécutant dans un terminal la commande :
+```bash
+git clone https://github.com/AbelSILLY/TP_SVM.git
+```
+
+Vous pourrez ensuite compiler le rapport en éxécutant la commande :
+```bash
+quarto render rapport.qmd
+```
+
+Après vous être placé dans le dossier `quarto`.
+
  - Le rapport de tp est disponible dans le fichier `rapport.pdf`.
+
+
+
 
 ### Code
  - Le code python est situé dans le dossier `code`, plus précisemment dans le fichier *svm_script.py*.
